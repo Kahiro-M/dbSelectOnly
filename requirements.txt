@@ -1,2 +1,8 @@
+altgraph==0.17.4
+packaging==24.1
+pefile==2023.2.7
+pyinstaller==6.11.0
+pyinstaller-hooks-contrib==2024.9
 pyodbc==5.1.0
+pywin32-ctypes==0.2.3
 sqlparse==0.5.1

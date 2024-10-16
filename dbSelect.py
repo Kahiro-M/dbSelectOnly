@@ -78,6 +78,7 @@ def execSql(config,sql):
     rows = cursor.fetchall()
     rowInfo = []
     i = 0
+
     for row in rows:
         print(i,row)
         rowInfo.insert(i,{})
@@ -169,7 +170,7 @@ if __name__ == '__main__':
     outPath = mkdir_datetime('SQL_RESULT_')
     for sqlStr in parsedSql['SQL']:
         execDict = execSql(config,sqlStr)
-        dict2csv(execDict,filePath=outPath+'\output_'+str(i)+'.csv')
+        str2txt(sqlStr,filePath=outPath+'\input_'+str(i)+'.sql')
         dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
-        str2txt(sql,filePath=outPath+'\input_'+str(i)+'.sql')
+        dict2csv(execDict,filePath=outPath+'\output_'+str(i)+'.csv')
         i += 1
