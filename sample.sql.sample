@@ -1,0 +1,1 @@
+SELECT カラム名1,カラム名2 FROM テーブル名 WHERE 抽出条件
