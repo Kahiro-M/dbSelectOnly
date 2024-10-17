@@ -1,1 +1,1 @@
-pyinstaller --onefile --icon=icon.ico dbSelect.py -n dbSelect
+pyinstaller --noconsole --onefile --icon=icon.ico dbSelect.py -n dbSelect
