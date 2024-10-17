@@ -37,6 +37,75 @@ def readConfigIni(filePath='config.ini'):
     else:
         configData['PWD'] = ''
 
+    if(config.has_option('DB','DATABASE')):
+        configData['DATABASE'] = config.get('DB','DATABASE')
+        configString += repr('DATABASE='+configData['DATABASE'])[1:-1]+r';'
+    else:
+        configData['DATABASE'] = ''
+
+    if(config.has_option('DB','DB')):
+        configData['DB'] = config.get('DB','DB')
+        configString += repr('DB='+configData['DB'])[1:-1]+r';'
+    else:
+        configData['DB'] = ''
+
+    if(config.has_option('DB','DFLT_BIGINT_BIND_STR')):
+        configData['DFLT_BIGINT_BIND_STR'] = config.get('DB','DFLT_BIGINT_BIND_STR')
+        configString += repr('DFLT_BIGINT_BIND_STR='+configData['DFLT_BIGINT_BIND_STR'])[1:-1]+r';'
+    else:
+        configData['DFLT_BIGINT_BIND_STR'] = ''
+
+    if(config.has_option('DB','DRIVER')):
+        configData['DRIVER'] = config.get('DB','DRIVER')
+        configString += repr('DRIVER='+configData['DRIVER'])[1:-1]+r';'
+    else:
+        configData['DRIVER'] = ''
+
+    if(config.has_option('DB','NO_SCHEMA')):
+        configData['NO_SCHEMA'] = config.get('DB','NO_SCHEMA')
+        configString += repr('NO_SCHEMA='+configData['NO_SCHEMA'])[1:-1]+r';'
+    else:
+        configData['NO_SCHEMA'] = ''
+
+    if(config.has_option('DB','PASSWORD')):
+        configData['PASSWORD'] = config.get('DB','PASSWORD')
+        configString += repr('PASSWORD='+configData['PASSWORD'])[1:-1]+r';'
+    else:
+        configData['PASSWORD'] = ''
+
+    if(config.has_option('DB','PORT')):
+        configData['PORT'] = config.get('DB','PORT')
+        configString += repr('PORT='+configData['PORT'])[1:-1]+r';'
+    else:
+        configData['PORT'] = ''
+
+    if(config.has_option('DB','PWD')):
+        configData['PWD'] = config.get('DB','PWD')
+        configString += repr('PWD='+configData['PWD'])[1:-1]+r';'
+    else:
+        configData['PWD'] = ''
+
+
+    if(config.has_option('DB','SERVER')):
+        configData['SERVER'] = config.get('DB','SERVER')
+        configString += repr('SERVER='+configData['SERVER'])[1:-1]+r';'
+    else:
+        configData['SERVER'] = ''
+
+
+    if(config.has_option('DB','UID')):
+        configData['UID'] = config.get('DB','UID')
+        configString += repr('UID='+configData['UID'])[1:-1]+r';'
+    else:
+        configData['UID'] = ''
+
+
+    if(config.has_option('DB','USER')):
+        configData['USER'] = config.get('DB','USER')
+        configString += repr('USER='+configData['USER'])[1:-1]+r';'
+    else:
+        configData['USER'] = ''
+
     configData['CONNECTION_STRING'] = configString
 
     return configData
