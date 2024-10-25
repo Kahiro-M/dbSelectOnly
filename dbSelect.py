@@ -149,7 +149,6 @@ def execSql(config,sql):
     i = 0
 
     for row in rows:
-        print(i,row)
         rowInfo.insert(i,{})
         j = 0
         for column in row:
@@ -203,9 +202,28 @@ def str2txt(data,filePath='.\output.txt'):
 
 
 if __name__ == '__main__':
-    import tkinter, tkinter.filedialog, tkinter.messagebox
+    import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
     import pprint
+    # SQLファイル実行関数
+    def execSqlFile(file):
+        with open(file,'r',encoding='UTF-8') as f:
+            sql = ''.join(f.read().splitlines())
+        # SQLのチェック（SELECT文以外が含まれているか）
+        parsedSql = checkSelectOnlySql(sql)
+        if(parsedSql['IS_SELECT_ONLY'] == False):
+            tkinter.messagebox.showinfo('SQLエラー','指定したSQLにSELECT文以外のステートメントが含まれています。\nSELECT文のみ利用可能です。\n含まれているSQL：['+','.join(parsedSql['HAS_DML_LIST'])+']')
+            return -1
 
+        # SQLの実行
+        outPath = mkdir_datetime('SQL_RESULT_')
+        for i,sqlStr in enumerate(parsedSql['SQL']):
+            print(str(i+1)+'行目 SQLを実行')
+            execDict = execSql(config,sqlStr)
+            str2txt(sqlStr,filePath=outPath+'\input_'+str(i)+'.sql')
+            dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
+            dict2csv(execDict,filePath=outPath+'\output_'+str(i)+'.csv')
+            print(str(i+1)+'行目 実行完了')
+        return i+1
     # 設定ファイルから接続情報を取得
     config = readConfigIni('config.ini')
     if(len(config['CONNECTION_STRING']) < 1):
@@ -215,31 +233,52 @@ if __name__ == '__main__':
 
     # SQLの指定（引数にない場合はファイルを選択）
     if(len(sys.argv)<2):
-        tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
-        # ファイル選択ダイアログの表示
-        root = tkinter.Tk()
-        root.withdraw()
-        fTyp = [('SQLファイル','*.sql')]
-        iDir = os.path.abspath(dir_path)
-        file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
-        fileList = [file]
-        with open(fileList[0],'r',encoding='UTF-8') as f:
-            sql = ''.join(f.read().splitlines())
+        execFlg = True
+        while(execFlg):
+            print('============ DBから情報取得 ============')
+            print('------------- 実行候補 SQL -------------')
+            
+            # 現在のディレクトリを取得
+            currentDir = os.getcwd()
+            # 現在のディレクトリ内のCSVファイルの一覧を取得
+            sql_files = [f for f in os.listdir(currentDir) if f.endswith(('.sql','.SQL'))]
+            sqlFileList = {}
+            for i,sql_file in enumerate(sql_files):
+                sqlFileList[i+1] = sql_file
+                print('       '+str(i+1)+' : '+sql_file)
+            print('       0 : その他のSQLを選択')
+            print('    空白 : 終了')
+            print('----------------------------------------')
+            choiceStr = input('入力してください：')
+
+            # exitの場合は終了
+            if(len(choiceStr)<1):
+                print('終了します。\n\n')
+                execFlg = False
+
+            # 0の場合はファイル選択
+            elif(choiceStr=='0'):
+                tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
+                # ファイル選択ダイアログの表示
+                root = tkinter.Tk()
+                root.attributes('-topmost', True)
+                root.withdraw()
+                fTyp = [('SQLファイル','*.sql')]
+                iDir = os.path.abspath(dir_path)
+                file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
+                fileList = [file]
+                ret = execSqlFile(fileList[0])
+                print(str(ret)+'件 実行完了\n\n')
+
+            # 選択肢にある場合は実行
+            elif(int(choiceStr) in list(sqlFileList.keys())):
+                ret = execSqlFile(sqlFileList[int(choiceStr)])
+                print(str(ret)+'件 実行完了\n\n')
+
+            # 選択肢に無い場合はもう一度訊く
+            else:
+                print('選択肢にありません。もう一度、選択してください。\n\n')
+
     else:
         sql = ''.join(sys.argv[1:])
-    
-    # SQLのチェック（SELECT文以外が含まれているか）
-    parsedSql = checkSelectOnlySql(sql)
-    if(parsedSql['IS_SELECT_ONLY'] == False):
-        tkinter.messagebox.showinfo('SQLエラー','指定したSQLにSELECT文以外のステートメントが含まれています。\nSELECT文のみ利用可能です。\n含まれているSQL：['+','.join(parsedSql['HAS_DML_LIST'])+']')
-        sys.exit()
 
-    # SQLの実行
-    i = 1
-    outPath = mkdir_datetime('SQL_RESULT_')
-    for sqlStr in parsedSql['SQL']:
-        execDict = execSql(config,sqlStr)
-        str2txt(sqlStr,filePath=outPath+'\input_'+str(i)+'.sql')
-        dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
-        dict2csv(execDict,filePath=outPath+'\output_'+str(i)+'.csv')
-        i += 1
