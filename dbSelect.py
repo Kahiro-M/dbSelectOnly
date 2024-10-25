@@ -258,11 +258,11 @@ if __name__ == '__main__':
 
             # 0の場合はファイル選択
             elif(choiceStr=='0'):
-                tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
-                # ファイル選択ダイアログの表示
                 root = tkinter.Tk()
                 root.attributes('-topmost', True)
                 root.withdraw()
+                tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
+                # ファイル選択ダイアログの表示
                 fTyp = [('SQLファイル','*.sql')]
                 iDir = os.path.abspath(dir_path)
                 file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
