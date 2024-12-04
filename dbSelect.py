@@ -131,19 +131,59 @@ def checkSelectOnlySql(sql):
     ret['SQL'] = sqlparse.split(sql)
     return ret
 
+
+def removeSqlComments(sql):
+    import sqlparse
+    import re
+
+    # SQLを解析
+    parsed = sqlparse.parse(sql)
+    if not parsed:
+        return sql  # 解析できない場合は元のSQLを返す
+    
+    # コメントを取り除いたSQLを構築
+    result = []
+    comment = []
+    for token in parsed[0].flatten():
+        # コメントトークン以外を追加
+        if (token.ttype != sqlparse.tokens.Token.Comment.Single and token.ttype != sqlparse.tokens.Token.Comment.Multiline):
+            result.append(token.value)
+        else:
+            # Windowsで使用できない文字を削除
+            tmpStr = re.sub(r'[<>:"/\\|?*]', '', token.value)
+            # 前後の空白も削除
+            tmpStr = tmpStr.strip()
+            # '-- コメント'の先頭3文字を削除
+            if(token.ttype == sqlparse.tokens.Token.Comment.Single):
+                tmpStr = tmpStr[3:]
+            comment.append(tmpStr)
+    
+    # 結果を連結して返す
+    return {'sql':"".join(result),'comment':",".join(comment)}
+
+
 def execSql(config,sql):
     # ODBCで接続
     connection = pyodbc.connect(config['CONNECTION_STRING'])
     cursor = connection.cursor()
 
     # SQLの実行
-    ret = cursor.execute(sql)
+    normalizedSql = removeSqlComments(sql)
+    comment = ''
+    if('comment' in normalizedSql):
+        comment = normalizedSql['comment']
+    ret = cursor.execute(normalizedSql['sql'])
 
     # 実行結果の整形 ↓の形式
-    # [
-    #   {column1:value1-1,column2:value1-2},
-    #   {column1:value2-1,column2:value2-2},
-    # ]
+    # {
+    #     'rowInfo':
+    #         [
+    #             {column1:value1-1,column2:value1-2},
+    #             {column1:value2-1,column2:value2-2}
+    #         ],
+    #     'comment':
+    #         "comment1,comment2"
+    # }
     rows = cursor.fetchall()
     rowInfo = []
     i = 0
@@ -160,7 +200,7 @@ def execSql(config,sql):
     # ODBCを切断
     connection.close()
 
-    return rowInfo
+    return {'rowInfo':rowInfo,'comment':normalizedSql['comment']}
 
 
 # 辞書型データをCSVとして保存
@@ -216,13 +256,14 @@ if __name__ == '__main__':
 
         # SQLの実行
         outPath = mkdir_datetime('SQL_RESULT_')
-        for i,sqlStr in enumerate(parsedSql['SQL']):
-            print(str(i+1)+'行目 SQLを実行')
-            execDict = execSql(config,sqlStr)
-            str2txt(sqlStr,filePath=outPath+'\input_'+str(i)+'.sql')
-            dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
-            dict2csv(execDict,filePath=outPath+'\output_'+str(i)+'.csv')
-            print(str(i+1)+'行目 実行完了')
+        with open(file,'r',encoding='UTF-8') as f:
+            for i,sqlStr in enumerate(f):
+                print(str(i+1)+'行目 SQLを実行')
+                execDict = execSql(config,sqlStr)
+                str2txt(sqlStr,filePath=outPath+'\\'+str(i)+'_input.sql')
+                # dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
+                dict2csv(execDict['rowInfo'],filePath=outPath+'\\'+str(i)+'_'+execDict["comment"]+'.csv')
+                print(str(i+1)+'行目 実行完了')
         return i+1
     # 設定ファイルから接続情報を取得
     config = readConfigIni('config.ini')
@@ -280,5 +321,9 @@ if __name__ == '__main__':
                 print('選択肢にありません。もう一度、選択してください。\n\n')
 
     else:
-        sql = ''.join(sys.argv[1:])
+        ret = execSqlFile(sys.argv[1])
+        print(str(ret)+'件 実行完了\n\n')
+        print('終了します。\n\n')
+
+        # sql = ''.join(sys.argv[1:])
 
