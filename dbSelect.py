@@ -1,3 +1,4 @@
+import re
 import pyodbc
 import sys
 import os
@@ -131,35 +132,63 @@ def checkSelectOnlySql(sql):
     ret['SQL'] = sqlparse.split(sql)
     return ret
 
+# SQL文とコメントを分割する [{'sql': ..., 'comment': ...}, ...]
+def splitSqlAndComment(sql_text: str):
+    results = []
 
-def removeSqlComments(sql):
-    import sqlparse
-    import re
+    # 改行統一
+    sql_text = sql_text.replace('\r\n', '\n')
 
-    # SQLを解析
-    parsed = sqlparse.parse(sql)
-    if not parsed:
-        return sql  # 解析できない場合は元のSQLを返す
-    
-    # コメントを取り除いたSQLを構築
-    result = []
-    comment = []
-    for token in parsed[0].flatten():
-        # コメントトークン以外を追加
-        if (token.ttype != sqlparse.tokens.Token.Comment.Single and token.ttype != sqlparse.tokens.Token.Comment.Multiline):
-            result.append(token.value)
-        else:
-            # Windowsで使用できない文字を削除
-            tmpStr = re.sub(r'[<>:"/\\|?*]', '', token.value)
-            # 前後の空白も削除
-            tmpStr = tmpStr.strip()
-            # '-- コメント'の先頭3文字を削除
-            if(token.ttype == sqlparse.tokens.Token.Comment.Single):
-                tmpStr = tmpStr[3:]
-            comment.append(tmpStr)
-    
-    # 結果を連結して返す
-    return {'sql':"".join(result),'comment':",".join(comment)}
+    # コメントを含めた行単位に分解
+    lines = sql_text.split('\n')
+
+    current_sql = []
+    current_comment = ""
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        # コメント行（-- で始まる）
+        if stripped.startswith('--'):
+            # 現在のSQL文がまだ途中なら、コメントは「そのSQLの説明」として扱う
+            if current_sql:
+                # コメントは連結（複数行コメント対応）
+                if current_comment:
+                    current_comment += " "
+                current_comment += stripped[2:].strip()
+            else:
+                # SQLが始まっていない状態のコメントは無視（または次のSQLに付与）
+                current_comment = stripped[2:].strip()
+            continue
+
+        # SQL本体行
+        current_sql.append(line)
+
+        # 文末にセミコロンがある場合 → SQL文として確定
+        if ';' in line:
+            sql_stmt = '\n'.join(current_sql).strip()
+            # セミコロンの後のコメントを抽出
+            m = re.search(r';\s*--\s*(.*)$', sql_stmt)
+            if m:
+                inline_comment = m.group(1).strip()
+                sql_stmt = re.sub(r';\s*--.*$', ';', sql_stmt).strip()
+                if current_comment:
+                    current_comment += " " + inline_comment
+                else:
+                    current_comment = inline_comment
+
+            results.append({
+                'sql': sql_stmt,
+                'comment': current_comment.strip()
+            })
+
+            # 次のSQLに備えてリセット
+            current_sql = []
+            current_comment = ""
+
+    return results
 
 
 def execSql(config,sql):
@@ -168,12 +197,12 @@ def execSql(config,sql):
     cursor = connection.cursor()
 
     # SQLの実行
-    normalizedSql = removeSqlComments(sql)
-    comment = ''
-    if('comment' in normalizedSql):
-        comment = normalizedSql['comment']
-    ret = cursor.execute(normalizedSql['sql'])
-
+    try:
+        ret = cursor.execute(sql)
+    except pyodbc.Error as e:
+        err_str = str(e).encode("utf-8", errors="replace").decode("utf-8")
+        print("Safe error string:", err_str)
+        sys.exit()
     # 実行結果の整形 ↓の形式
     # {
     #     'rowInfo':
@@ -196,11 +225,10 @@ def execSql(config,sql):
             j += 1
         i += 1
 
-
     # ODBCを切断
     connection.close()
 
-    return {'rowInfo':rowInfo,'comment':normalizedSql['comment']}
+    return rowInfo
 
 
 # 辞書型データをCSVとして保存
@@ -244,27 +272,43 @@ def str2txt(data,filePath='.\output.txt'):
 if __name__ == '__main__':
     import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
     import pprint
-    # SQLファイル実行関数
     def execSqlFile(file):
-        with open(file,'r',encoding='UTF-8') as f:
-            sql = ''.join(f.read().splitlines())
-        # SQLのチェック（SELECT文以外が含まれているか）
-        parsedSql = checkSelectOnlySql(sql)
-        if(parsedSql['IS_SELECT_ONLY'] == False):
-            tkinter.messagebox.showinfo('SQLエラー','指定したSQLにSELECT文以外のステートメントが含まれています。\nSELECT文のみ利用可能です。\n含まれているSQL：['+','.join(parsedSql['HAS_DML_LIST'])+']')
-            return -1
+        # SQLファイルを読み込み
+        with open(file, 'r', encoding='UTF-8') as f:
+            sqlText = f.read()
 
-        # SQLの実行
+        # SQL文を文単位で分割
+        sqlStatements = splitSqlAndComment(sqlText)
+
+
+        # 出力先ディレクトリ作成
         outPath = mkdir_datetime('SQL_RESULT_')
-        with open(file,'r',encoding='UTF-8') as f:
-            for i,sqlStr in enumerate(f):
-                print(str(i+1)+'行目 SQLを実行')
-                execDict = execSql(config,sqlStr)
-                str2txt(sqlStr,filePath=outPath+'\\'+str(i)+'_input.sql')
-                # dict2txt(execDict,filePath=outPath+'\output_'+str(i)+'.txt')
-                dict2csv(execDict['rowInfo'],filePath=outPath+'\\'+str(i)+'_'+execDict["comment"]+'.csv')
-                print(str(i+1)+'行目 実行完了')
-        return i+1
+
+        # 各SQL文を実行
+        for i, sqlData in enumerate(sqlStatements):
+
+            # SELECT文以外を含むかチェック
+            parsedSql = checkSelectOnlySql(sqlData['sql'])
+            if not parsedSql['IS_SELECT_ONLY']:
+                tkinter.messagebox.showinfo(
+                    'SQLエラー',
+                    '指定したSQLにSELECT文以外のステートメントが含まれています。\n'
+                    'SELECT文のみ利用可能です。\n含まれているSQL：[' + ','.join(parsedSql['HAS_DML_LIST']) + ']'
+                )
+                return -1
+
+            print(f'{i+1}件目 SQLを実行中...')
+            execRet = execSql(config, sqlData['sql'])
+            execDict = {'rowInfo':execRet,'comment':sqlData['comment']}
+
+            # 入力SQLと結果をファイル出力
+            str2txt(sqlData['sql'], filePath=os.path.join(outPath, f'{i}_input.sql'))
+            csv_comment = execDict["comment"] if execDict["comment"] else f'sql_{i}'
+            dict2csv(execDict['rowInfo'], filePath=os.path.join(outPath, f'{i}_{csv_comment}.csv'))
+
+            print(f'{i+1}件目 実行完了')
+
+        return len(sqlStatements)
     # 設定ファイルから接続情報を取得
     config = readConfigIni('config.ini')
     if(len(config['CONNECTION_STRING']) < 1):
@@ -277,6 +321,8 @@ if __name__ == '__main__':
         execFlg = True
         while(execFlg):
             print('============ DBから情報取得 ============')
+            print('                                 v.1.2.0')
+            print('・複数行のSQLに対応')
             print('------------- 実行候補 SQL -------------')
             
             # 現在のディレクトリを取得
