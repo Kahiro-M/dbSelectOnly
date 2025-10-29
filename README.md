@@ -12,12 +12,11 @@
 
 ## 使用方法
 1. `config.ini`に接続情報を入力
-2. `***.sql`に実行したいSQLを入力（1行）
+2. `***.sql`に実行したいSQLを記載
 3. `dbSelect.py`を実行し、`***.sql`を指定
 3. `SQL_RESULT_yyyymmdd_hhmm_ss`に以下が出力される
-    - input_[連番].sql
-    - output_[連番].csv
-    - output_[連番].txt
+    - `[連番]_input.sql`
+    - `[連番]_output.csv` もしくは `[連番]_[コメント].csv`
 
 ## ファイル仕様
 ### `config.ini`
@@ -40,30 +39,25 @@ USER=root
 
 ### `***.sql`
 実行するSQLを記載する。  
-SQLは複数行実行できるが、1つのSQLは1行に収める必要がある。
+セミコロンの直後に記載したコメントは実行結果のファイル名となる。
 #### OK
 ```
 SELECT * FROM `sample`.`data1`;
-SELECT * FROM `sample`.`data2`;
-```
-#### NG
-```
--- 1つのSQLが複数行に渡っている。
+SELECT * FROM `sample`.`data2`; -- data2output
 SELECT
  * 
 FROM
-  `sample`.`data1`;
+  `sample`.`data3`; -- data3output
 ```
+#### NG
 ```
 -- Accessのみのクエリを含むSQLをMySQLで実行している(Switch関数など)
 SELECT sample.data1.uid, Switch( sample.data1.uid In ("900001","900002","900003"),"テストユーザ", sample.data1.uid In ("000001","000002","000003"),"管理者" ) AS ユーザ区分 INTO ユーザ一覧 FROM sample.data1;
 ```
 
-#### input_[連番].sql
+### 出力結果
+#### `[連番]_input.sql`
 実行したSQL文
 
-#### output_[連番].csv
+#### `[連番]_output.csv` もしくは `[連番]_[コメント].csv`
 SQLで指定した出力結果のカンマ区切り形式（csv）
-
-#### output_[連番].txt
-SQLで指定した出力結果のJSON形式
