@@ -299,12 +299,15 @@ if __name__ == '__main__':
 
             print(f'{i+1}件目 SQLを実行中...')
             execRet = execSql(config, sqlData['sql'])
-            execDict = {'rowInfo':execRet,'comment':sqlData['comment']}
 
             # 入力SQLと結果をファイル出力
             str2txt(sqlData['sql'], filePath=os.path.join(outPath, f'{i}_input.sql'))
-            csv_comment = execDict["comment"] if execDict["comment"] else f'sql_{i}'
-            dict2csv(execDict['rowInfo'], filePath=os.path.join(outPath, f'{i}_{csv_comment}.csv'))
+            if len(execRet) != 0:
+                execDict = {'rowInfo':execRet,'comment':sqlData['comment']}
+                csv_comment = execDict["comment"] if execDict["comment"] else f'sql_{i}'
+                dict2csv(execDict['rowInfo'], filePath=os.path.join(outPath, f'{i}_{csv_comment}.csv'))
+            else:
+                str2txt('実行結果はNULLでした。', filePath=os.path.join(outPath, f'{i}_{sqlData["comment"]}.txt'))
 
             print(f'{i+1}件目 実行完了')
 
@@ -321,8 +324,8 @@ if __name__ == '__main__':
         execFlg = True
         while(execFlg):
             print('============ DBから情報取得 ============')
-            print('                                 v.1.2.0')
-            print('・複数行のSQLに対応')
+            print('                                 v.1.2.1')
+            print('・実行結果がNULLの場合に対応')
             print('------------- 実行候補 SQL -------------')
             
             # 現在のディレクトリを取得
