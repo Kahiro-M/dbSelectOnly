@@ -268,6 +268,20 @@ def str2txt(data,filePath='.\output.txt'):
         file.write(data)
 
 
+# OSのエクスプローラーで指定パスを開く
+def openExplorer(path: str):
+    import os
+    import subprocess
+    import platform
+    system = platform.system()
+    absPath = os.path.abspath(path)
+    if system == "Windows":
+        subprocess.run(["explorer", absPath])
+    elif system == "Darwin":  # macOS
+        subprocess.run(["open", absPath])
+    elif system == "Linux":
+        subprocess.run(["xdg-open", absPath])
+
 
 if __name__ == '__main__':
     import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
@@ -279,7 +293,6 @@ if __name__ == '__main__':
 
         # SQL文を文単位で分割
         sqlStatements = splitSqlAndComment(sqlText)
-
 
         # 出力先ディレクトリ作成
         outPath = mkdir_datetime('SQL_RESULT_')
@@ -311,7 +324,8 @@ if __name__ == '__main__':
 
             print(f'{i+1}件目 実行完了')
 
-        return len(sqlStatements)
+        return {'count':len(sqlStatements),'outPath':outPath}
+
     # 設定ファイルから接続情報を取得
     config = readConfigIni('config.ini')
     if(len(config['CONNECTION_STRING']) < 1):
@@ -324,8 +338,8 @@ if __name__ == '__main__':
         execFlg = True
         while(execFlg):
             print('============ DBから情報取得 ============')
-            print('                                 v.1.2.1')
-            print('・実行結果がNULLの場合に対応')
+            print('                                 v.1.2.2')
+            print('・実行後に結果が格納されたディレクトリを開く処理を追加')
             print('------------- 実行候補 SQL -------------')
             
             # 現在のディレクトリを取得
@@ -358,12 +372,17 @@ if __name__ == '__main__':
                 file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
                 fileList = [file]
                 ret = execSqlFile(fileList[0])
-                print(str(ret)+'件 実行完了\n\n')
+                print(str(ret['count'])+'件 実行完了\n')
+                print('実行結果格納ディレクトリを開きます。\n')
+                openExplorer(ret['outPath'])
+                execFlg = True
 
             # 選択肢にある場合は実行
             elif(int(choiceStr) in list(sqlFileList.keys())):
                 ret = execSqlFile(sqlFileList[int(choiceStr)])
-                print(str(ret)+'件 実行完了\n\n')
+                print(str(ret['count'])+'件 実行完了\n')
+                print('実行結果格納ディレクトリを開きます。\n\n')
+                openExplorer(ret['outPath'])
 
             # 選択肢に無い場合はもう一度訊く
             else:
@@ -371,8 +390,7 @@ if __name__ == '__main__':
 
     else:
         ret = execSqlFile(sys.argv[1])
-        print(str(ret)+'件 実行完了\n\n')
+        print(str(ret['count'])+'件 実行完了\n\n')
         print('終了します。\n\n')
 
-        # sql = ''.join(sys.argv[1:])
 
