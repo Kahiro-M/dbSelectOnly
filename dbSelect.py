@@ -2,6 +2,7 @@ import re
 import pyodbc
 import sys
 import os
+import platform
 from mkdir_datetime import mkdir_datetime
 dir_path = './'
 
@@ -272,7 +273,6 @@ def str2txt(data,filePath='.\output.txt'):
 def openExplorer(path: str):
     import os
     import subprocess
-    import platform
     system = platform.system()
     absPath = os.path.abspath(path)
     if system == "Windows":
@@ -282,6 +282,16 @@ def openExplorer(path: str):
     elif system == "Linux":
         subprocess.run(["xdg-open", absPath])
 
+# 入力バッファをクリアする
+def flushInput():
+    system = platform.system()
+    if system == "Windows":
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getch()
+    else:
+        import termios
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
 if __name__ == '__main__':
     import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
@@ -338,8 +348,8 @@ if __name__ == '__main__':
         execFlg = True
         while(execFlg):
             print('============ DBから情報取得 ============')
-            print('                                 v.1.2.2')
-            print('・実行後に結果が格納されたディレクトリを開く処理を追加')
+            print('                                 v.1.2.3')
+            print('・ファイル選択時のバッファクリアを追加')
             print('------------- 実行候補 SQL -------------')
             
             # 現在のディレクトリを取得
@@ -353,6 +363,7 @@ if __name__ == '__main__':
             print('       0 : その他のSQLを選択')
             print('    空白 : 終了')
             print('----------------------------------------')
+            flushInput()
             choiceStr = input('入力してください：')
 
             # exitの場合は終了
@@ -375,7 +386,6 @@ if __name__ == '__main__':
                 print(str(ret['count'])+'件 実行完了\n')
                 print('実行結果格納ディレクトリを開きます。\n')
                 openExplorer(ret['outPath'])
-                execFlg = True
 
             # 選択肢にある場合は実行
             elif(int(choiceStr) in list(sqlFileList.keys())):
