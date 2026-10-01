@@ -328,9 +328,9 @@ def selectFile(dirPath, fileType=['.sql', '.SQL']):
             root = tkinter.Tk()
             root.attributes('-topmost', True)
             root.withdraw()
-            tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
+            tkinter.messagebox.showinfo('SQL指定',f'{fileType[0]}を選択してください')
             # ファイル選択ダイアログの表示
-            fTyp = [('SQLファイル','*.sql')]
+            fTyp = [(f'{fileType[0]}ファイル', " ".join(f"*{extension}" for extension in fileType))]
             iDir = os.path.abspath(dir_path)
             file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
             choiceFile = [file][0]
@@ -400,7 +400,7 @@ if __name__ == '__main__':
         execFlg = True
         while(execFlg):
             print('============ DBから情報取得 ============')
-            print('                                 v.1.3.0')
+            print('                                 v.1.3.1')
             print('・接続設定のINIファイル指定機能追加')
             print('------------- 実行候補 SQL -------------')
             
@@ -412,13 +412,21 @@ if __name__ == '__main__':
             if(execFlg == False):
                 print('終了します。\n\n')
                 execFlg = False
-
-            # 選択肢にある場合は実行
             else:
-                ret = execSqlFile(file=choiceSql)
-                print(str(ret['count'])+'件 実行完了\n')
-                print('実行結果格納ディレクトリを開きます。\n\n')
-                openExplorer(ret['outPath'])
+                print('')
+                print('------------- 読込候補 INI -------------')
+                # 現在のディレクトリ内のINIファイルの一覧を取得
+                choiceIni,execFlg = selectFile(dirPath=currentDir, fileType=['.ini', '.INI'])
+                if(execFlg == False):
+                    print('終了します。\n\n')
+                    execFlg = False
+                
+                # 選択肢にある場合は実行
+                else:
+                    ret = execSqlFile(file=choiceSql, configFile=choiceIni)
+                    print(str(ret['count'])+'件 実行完了\n')
+                    print('実行結果格納ディレクトリを開きます。\n\n')
+                    openExplorer(ret['outPath'])
 
 
     else:
