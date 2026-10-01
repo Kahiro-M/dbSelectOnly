@@ -296,7 +296,16 @@ def flushInput():
 if __name__ == '__main__':
     import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
     import pprint
-    def execSqlFile(file):
+    def execSqlFile(file,configFile='config.ini'):
+        # 設定ファイルから接続情報を取得
+        print(f'INIファイル：{configFile}')
+        config = readConfigIni(configFile)
+        if(len(config['CONNECTION_STRING']) < 1):
+            tkinter.messagebox.showerror('設定エラー','INIファイルから設定情報が取得できませんでした。\n終了します。')
+            print('ERR : INIファイルから設定情報が取得できませんでした。終了します。')
+            sys.exit()
+
+        print(f'SQLファイル：{file}')
         # SQLファイルを読み込み
         with open(file, 'r', encoding='UTF-8') as f:
             sqlText = f.read()
@@ -336,13 +345,6 @@ if __name__ == '__main__':
 
         return {'count':len(sqlStatements),'outPath':outPath}
 
-    # 設定ファイルから接続情報を取得
-    config = readConfigIni('config.ini')
-    if(len(config['CONNECTION_STRING']) < 1):
-        tkinter.messagebox.showerror('設定エラー','INIファイルから設定情報が取得できませんでした。\n終了します。')
-        print('ERR : INIファイルから設定情報が取得できませんでした。終了します。')
-        sys.exit()
-
     # SQLの指定（引数にない場合はファイルを選択）
     if(len(sys.argv)<2):
         execFlg = True
@@ -363,6 +365,7 @@ if __name__ == '__main__':
             print('       0 : その他のSQLを選択')
             print('    空白 : 終了')
             print('----------------------------------------')
+            print(f'INIファイル：{os.path.abspath(dir_path)}\config.ini　で設定されたDBに接続します。')
             flushInput()
             choiceStr = input('入力してください：')
 
@@ -382,14 +385,14 @@ if __name__ == '__main__':
                 iDir = os.path.abspath(dir_path)
                 file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
                 fileList = [file]
-                ret = execSqlFile(fileList[0])
+                ret = execSqlFile(file=fileList[0])
                 print(str(ret['count'])+'件 実行完了\n')
                 print('実行結果格納ディレクトリを開きます。\n')
                 openExplorer(ret['outPath'])
 
             # 選択肢にある場合は実行
             elif(int(choiceStr) in list(sqlFileList.keys())):
-                ret = execSqlFile(sqlFileList[int(choiceStr)])
+                ret = execSqlFile(file=sqlFileList[int(choiceStr)])
                 print(str(ret['count'])+'件 実行完了\n')
                 print('実行結果格納ディレクトリを開きます。\n\n')
                 openExplorer(ret['outPath'])
@@ -399,7 +402,10 @@ if __name__ == '__main__':
                 print('選択肢にありません。もう一度、選択してください。\n\n')
 
     else:
-        ret = execSqlFile(sys.argv[1])
+        if(len(sys.argv)>=3):
+            ret = execSqlFile(file=sys.argv[1], configFile=sys.argv[2])
+        else:
+            ret = execSqlFile(file=sys.argv[1])
         print(str(ret['count'])+'件 実行完了\n\n')
         print('終了します。\n\n')
 
