@@ -293,6 +293,56 @@ def flushInput():
         import termios
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
 
+# 現在のディレクトリ内のファイルの一覧を取得
+def selectFile(dirPath, fileType=['.sql', '.SQL']):
+    isChoiced = False
+    choiceFile = ''
+    execFlg = False
+
+    while(not isChoiced):
+        input_files = []
+        for f in os.listdir(dirPath):
+            if f.endswith(tuple(fileType)):
+                input_files.append(f)
+
+        inputFileList = {}
+        for i,input_file in enumerate(input_files):
+            inputFileList[i+1] = input_file
+            print('       '+str(i+1)+' : '+input_file)
+        print('       0 : その他のファイルを選択')
+        print('    空白 : 終了')
+        print('----------------------------------------')
+        flushInput()
+        choiceFile = input('入力してください：')
+        
+        if(len(choiceFile)>0 and int(choiceFile) in list(inputFileList.keys())):
+            choiceFile = inputFileList[int(choiceFile)]
+            isChoiced = True
+            execFlg = True
+        elif(len(choiceFile)==0):
+            isChoiced = True
+            execFlg = False
+
+        # 0の場合はファイル選択ダイアログを表示
+        elif(choiceFile=='0'):
+            root = tkinter.Tk()
+            root.attributes('-topmost', True)
+            root.withdraw()
+            tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
+            # ファイル選択ダイアログの表示
+            fTyp = [('SQLファイル','*.sql')]
+            iDir = os.path.abspath(dir_path)
+            file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
+            choiceFile = [file][0]
+            isChoiced = True
+            execFlg = True
+        else:
+            print('選択肢にありません。もう一度、選択してください。\n\n')
+            isChoiced = False
+            execFlg = False
+
+    return choiceFile, execFlg
+
 if __name__ == '__main__':
     import tkinter, tkinter.filedialog, tkinter.messagebox, tkinter.ttk
     import pprint
@@ -356,50 +406,20 @@ if __name__ == '__main__':
             
             # 現在のディレクトリを取得
             currentDir = os.getcwd()
-            # 現在のディレクトリ内のCSVファイルの一覧を取得
-            sql_files = [f for f in os.listdir(currentDir) if f.endswith(('.sql','.SQL'))]
-            sqlFileList = {}
-            for i,sql_file in enumerate(sql_files):
-                sqlFileList[i+1] = sql_file
-                print('       '+str(i+1)+' : '+sql_file)
-            print('       0 : その他のSQLを選択')
-            print('    空白 : 終了')
-            print('----------------------------------------')
-            print(f'INIファイル：{os.path.abspath(dir_path)}\config.ini　で設定されたDBに接続します。')
-            flushInput()
-            choiceStr = input('入力してください：')
-
+            # 現在のディレクトリ内のSQLファイルの一覧を取得
+            choiceSql,execFlg = selectFile(dirPath=currentDir, fileType=['.sql', '.SQL'])
             # exitの場合は終了
-            if(len(choiceStr)<1):
+            if(execFlg == False):
                 print('終了します。\n\n')
                 execFlg = False
 
-            # 0の場合はファイル選択
-            elif(choiceStr=='0'):
-                root = tkinter.Tk()
-                root.attributes('-topmost', True)
-                root.withdraw()
-                tkinter.messagebox.showinfo('SQL指定','sqlファイルを選択してください')
-                # ファイル選択ダイアログの表示
-                fTyp = [('SQLファイル','*.sql')]
-                iDir = os.path.abspath(dir_path)
-                file = tkinter.filedialog.askopenfilename(filetypes=fTyp,initialdir = iDir)
-                fileList = [file]
-                ret = execSqlFile(file=fileList[0])
-                print(str(ret['count'])+'件 実行完了\n')
-                print('実行結果格納ディレクトリを開きます。\n')
-                openExplorer(ret['outPath'])
-
             # 選択肢にある場合は実行
-            elif(int(choiceStr) in list(sqlFileList.keys())):
-                ret = execSqlFile(file=sqlFileList[int(choiceStr)])
+            else:
+                ret = execSqlFile(file=choiceSql)
                 print(str(ret['count'])+'件 実行完了\n')
                 print('実行結果格納ディレクトリを開きます。\n\n')
                 openExplorer(ret['outPath'])
 
-            # 選択肢に無い場合はもう一度訊く
-            else:
-                print('選択肢にありません。もう一度、選択してください。\n\n')
 
     else:
         if(len(sys.argv)>=3):
